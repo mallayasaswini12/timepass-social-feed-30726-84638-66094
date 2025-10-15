@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Camera, Home, Search, PlusSquare, Heart, User, LogOut } from "lucide-react";
+import { Camera, Home, Search, PlusSquare, Heart, User, LogOut, Film } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,9 @@ const Navbar = () => {
             >
               <Search className="w-6 h-6" />
             </button>
+            <Link to="/reels" className="text-foreground hover:text-primary transition-colors">
+              <Film className="w-6 h-6" />
+            </Link>
             <Link to="/create" className="text-foreground hover:text-primary transition-colors">
               <PlusSquare className="w-6 h-6" />
             </Link>

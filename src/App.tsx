@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Feed from "./pages/Feed";
 import Create from "./pages/Create";
 import Profile from "./pages/Profile";
+import Reels from "./pages/Reels";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reels"
+              element={
+                <ProtectedRoute>
+                  <Reels />
                 </ProtectedRoute>
               }
             />

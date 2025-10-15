@@ -61,8 +61,9 @@ const Profile = () => {
     try {
       const { data, error } = await supabase
         .from("posts")
-        .select("id, image_url, likes_count")
+        .select("id, image_url, likes_count, type")
         .eq("user_id", userId)
+        .eq("type", "post")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

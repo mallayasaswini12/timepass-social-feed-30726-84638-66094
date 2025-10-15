@@ -40,6 +40,7 @@ const Feed = () => {
           *,
           profiles (username, avatar_url)
         `)
+        .eq("type", "post")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

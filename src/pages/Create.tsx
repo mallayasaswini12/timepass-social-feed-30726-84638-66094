@@ -8,20 +8,37 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Video } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Create = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [caption, setCaption] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [video, setVideo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [contentType, setContentType] = useState<"post" | "reel">("post");
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImage(file);
+      setVideo(null);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setVideo(file);
+      setImage(null);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -32,16 +49,17 @@ const Create = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !image) return;
+    const file = contentType === "post" ? image : video;
+    if (!user || !file) return;
 
     setUploading(true);
     try {
-      const fileExt = image.name.split(".").pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("posts")
-        .upload(fileName, image);
+        .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
@@ -49,20 +67,29 @@ const Create = () => {
         .from("posts")
         .getPublicUrl(fileName);
 
+      const postData: any = {
+        user_id: user.id,
+        caption: caption || null,
+        type: contentType,
+      };
+
+      if (contentType === "post") {
+        postData.image_url = publicUrl;
+      } else {
+        postData.video_url = publicUrl;
+        postData.image_url = publicUrl; // Placeholder, ideally would be a thumbnail
+      }
+
       const { error: insertError } = await supabase
         .from("posts")
-        .insert({
-          user_id: user.id,
-          image_url: publicUrl,
-          caption: caption || null,
-        });
+        .insert(postData);
 
       if (insertError) throw insertError;
 
-      toast.success("Post created successfully!");
-      navigate("/");
+      toast.success(`${contentType === "post" ? "Post" : "Reel"} created successfully!`);
+      navigate(contentType === "post" ? "/" : "/reels");
     } catch (error: any) {
-      toast.error(error.message || "Error creating post");
+      toast.error(error.message || `Error creating ${contentType}`);
     } finally {
       setUploading(false);
     }
@@ -75,19 +102,40 @@ const Create = () => {
         <div className="max-w-2xl mx-auto px-4">
           <div className="bg-card rounded-2xl border p-8 shadow-lg">
             <h1 className="text-2xl font-bold mb-6 bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-              Create New Post
+              Create New Content
             </h1>
+
+            <Tabs value={contentType} onValueChange={(v) => setContentType(v as "post" | "reel")} className="mb-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="post" className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Post
+                </TabsTrigger>
+                <TabsTrigger value="reel" className="flex items-center gap-2">
+                  <Video className="w-4 h-4" />
+                  Reel
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="image">Image</Label>
+                <Label htmlFor="media">{contentType === "post" ? "Image" : "Video"}</Label>
                 {preview ? (
                   <div className="relative">
-                    <img
-                      src={preview}
-                      alt="Preview"
-                      className="w-full aspect-square object-cover rounded-xl"
-                    />
+                    {contentType === "post" ? (
+                      <img
+                        src={preview}
+                        alt="Preview"
+                        className="w-full aspect-square object-cover rounded-xl"
+                      />
+                    ) : (
+                      <video
+                        src={preview}
+                        className="w-full aspect-square object-cover rounded-xl"
+                        controls
+                      />
+                    )}
                     <Button
                       type="button"
                       variant="destructive"
@@ -95,6 +143,7 @@ const Create = () => {
                       className="absolute top-2 right-2"
                       onClick={() => {
                         setImage(null);
+                        setVideo(null);
                         setPreview("");
                       }}
                     >
@@ -103,18 +152,18 @@ const Create = () => {
                   </div>
                 ) : (
                   <label
-                    htmlFor="image"
+                    htmlFor="media"
                     className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
                   >
                     <Upload className="w-12 h-12 text-muted-foreground mb-2" />
                     <span className="text-sm text-muted-foreground">
-                      Click to upload image
+                      Click to upload {contentType === "post" ? "image" : "video"}
                     </span>
                     <Input
-                      id="image"
+                      id="media"
                       type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
+                      accept={contentType === "post" ? "image/*" : "video/*"}
+                      onChange={contentType === "post" ? handleImageChange : handleVideoChange}
                       className="hidden"
                       required
                     />
@@ -136,9 +185,9 @@ const Create = () => {
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-primary via-accent to-secondary hover:opacity-90 transition-opacity"
-                disabled={uploading || !image}
+                disabled={uploading || (!image && !video)}
               >
-                {uploading ? "Creating..." : "Create Post"}
+                {uploading ? "Creating..." : `Create ${contentType === "post" ? "Post" : "Reel"}`}
               </Button>
             </form>
           </div>
